@@ -3,6 +3,8 @@
 #
 import sys
 import time
+from random import seed
+from random import randint
 
 
 """
@@ -119,7 +121,8 @@ class SearchMotif():
     # TODO Compute Profile probability
     # TODO Compute profile entropy
     # TODO Compare the two entropy, takes the sequence with lowest entropy, stop when entropy goes up
-    def __init__(self, iterations, motifLength, pseudocount, shuffle, gibbs, matrix):
+    def __init__(self, sequences, iterations, motifLength, pseudocount, shuffle, gibbs, matrix):
+        self.sequences = sequences
         self.iterations = iterations
         self.motifLength = motifLength
         self.pseudocount = pseudocount
@@ -127,9 +130,35 @@ class SearchMotif():
         self.gibbs = gibbs
         self.matrix = matrix
 
+    def selectRandomMotif(self):
+        """
+        Helper function to generate random Motifs with target motif length
+        Returns:
+            A motif matrix with motifs randomly selected from the DNA sequences
 
+        """
+        seed(914)
+        motifs = []
+        for sequence in self.sequences:
+            # https://docs.python.org/3/library/random.html
+            i = randint(0, len(sequence)-self.motifLength)
+            # print(i)
+            motifs.append(sequence[i:i+self.motifLength])
+        return motifs
 
+    def generateProfile(self, motifs):
+        # https://stackoverflow.com/questions/4937491/matrix-transpose-in-python
+        motifsTranspose = [*zip(*motifs)]
+        AList, CList, GList, TList = [], [], [], []
+        for col in motifsTranspose:
+            AList.append(col.count('A') + self.pseudocount)
+            CList.append(col.count('C') + self.pseudocount)
+            GList.append(col.count('G') + self.pseudocount)
+            TList.append(col.count('T') + self.pseudocount)
+        print(AList, CList, GList, TList)
 
+    def randomizedMotifSearch(self):
+        pass
 
 class Usage(Exception):
     """
