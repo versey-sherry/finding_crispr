@@ -5,6 +5,8 @@ import sys
 import time
 from random import seed
 from random import randint
+from collections import defaultdict
+from math import log2
 
 
 """
@@ -110,11 +112,6 @@ class FastAreader():
 
 
 class SearchMotif():
-    # TODO Randomly select one 5-mer motif from each sequence and generate a Motif Matrix
-    # TODO Count nucleotides and generat a Profile
-    # TODO Adding the pseudo count
-    # TODO Compute Profile probability
-    # TODO Compute profile entropy
     # TODO Generate new Motif Matrix by the highest probability motif in the sequence
     # TODO Count nucleotides and generat a Profile
     # TODO Adding the pseudo count
@@ -147,15 +144,41 @@ class SearchMotif():
         return motifs
 
     def generateProfile(self, motifs):
+        """
+        Input motif matrix and generate a profile from the motif matrix.
+        Args:
+            motifs: The motif for generating the Profile
+
+        Returns:
+            A dictionary with the column number as key and nucleotides count dictionary as dictionary values
+
+        """
+        # the sum of nucleotide count per column including the added pseudocounts
+        colSum = len(motifs) + 4 * self.pseudocount
+        # print(colSum)
         # https://stackoverflow.com/questions/4937491/matrix-transpose-in-python
         motifsTranspose = [*zip(*motifs)]
-        AList, CList, GList, TList = [], [], [], []
-        for col in motifsTranspose:
-            AList.append(col.count('A') + self.pseudocount)
-            CList.append(col.count('C') + self.pseudocount)
-            GList.append(col.count('G') + self.pseudocount)
-            TList.append(col.count('T') + self.pseudocount)
-        print(AList, CList, GList, TList)
+        profileDict = defaultdict(dict)
+        for colNum, col in enumerate(motifsTranspose):
+            profileDict[colNum]['A'] = (col.count('A') + self.pseudocount)/colSum
+            profileDict[colNum]['C'] = (col.count('C') + self.pseudocount)/colSum
+            profileDict[colNum]['G'] = (col.count('G') + self.pseudocount)/colSum
+            profileDict[colNum]['T'] = (col.count('T') + self.pseudocount)/colSum
+        return profileDict
+
+    def computeEntropy(self, profile):
+        """
+        Compute the entropy of the profile
+        Args:
+            profile: the profile of probability from the motif matirx
+
+        Returns:
+            the entropy of the profile
+
+
+        """
+        return -sum([sum([probability * log2(probability) for probability in colValue.values()])
+                    for colValue in profile.values()])
 
     def randomizedMotifSearch(self):
         pass
