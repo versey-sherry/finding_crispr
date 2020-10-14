@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Dataset and progress
+.idea/
+scratch.py
+examples/
+output/
+*.out
+*Crisprs
