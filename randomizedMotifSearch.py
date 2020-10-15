@@ -5,9 +5,9 @@ import sys
 import time
 from random import seed
 from random import randint
+from random import shuffle
 from collections import defaultdict
 from math import log2
-
 
 """
 Homework 2: Finding CRISPR arrays
@@ -19,6 +19,7 @@ Examples:
 
 
 """
+
 
 # TODO Implement RanonizedMotif Search
 # TODO Implement Gibbs sampling
@@ -59,7 +60,7 @@ class CommandLine():
         self.parser.add_argument('-k', '--motifLength', type=int, help='The length of the target motif')
         self.parser.add_argument('-p', '--pseudocount', type=float, help='Pseudocount when computing Profile')
         # Extra credit
-        self.parser.add_argument('-r', '--shuffle', action='store_true', help='Shuffling the input sequence ')
+        self.parser.add_argument('-r', '--scramble', action='store_true', help='Shuffling the input sequence ')
         self.parser.add_argument('-g', '--gibbs', action='store_true', help='using gibbs sampling ')
         self.parser.add_argument('-m', '--matrix', action='store_true', help='print the name and the motif ')
 
@@ -112,18 +113,12 @@ class FastAreader():
 
 
 class SearchMotif():
-    # TODO Generate new Motif Matrix by the highest probability motif in the sequence
-    # TODO Count nucleotides and generat a Profile
-    # TODO Adding the pseudo count
-    # TODO Compute Profile probability
-    # TODO Compute profile entropy
-    # TODO Compare the two entropy, takes the sequence with lowest entropy, stop when entropy goes up
-    def __init__(self, sequences, iterations, motifLength, pseudocount, shuffle, gibbs, matrix):
+    def __init__(self, sequences, iterations, motifLength, pseudocount, scramble, gibbs, matrix):
         self.sequences = sequences
         self.iterations = iterations
         self.motifLength = motifLength
         self.pseudocount = pseudocount
-        self.shuffle = shuffle
+        self.scramble = scramble
         self.gibbs = gibbs
         self.matrix = matrix
 
@@ -208,7 +203,7 @@ class SearchMotif():
                     seqProb = seqProb * profile[index][nucleotide]
 
                 # pick the motif with max probability and lower alpha order
-                if seqProb >= maxProb and tempSeq < pickMotif:
+                if seqProb >= maxProb:
                     maxProb = seqProb
                     pickMotif = tempSeq
 
@@ -216,6 +211,13 @@ class SearchMotif():
         return motifs
 
     def randomizedMotifSearch(self):
+        """
+        Put everything together and implement randomizedMotifSearch
+        Returns:
+            bestMotifs: The motif matrix that's associated with the best score
+            bestScore: The best entropy score associated with the bestMotifs
+
+        """
         motifs = self.selectRandomMotif()
         # Initialize the best set of Motifs
         bestMotifs = motifs
@@ -236,18 +238,56 @@ class SearchMotif():
                 return bestMotifs, bestScore
 
     def iterateSearch(self):
-        #Initialized bestScore with a big number
+        """
+        Iterate the search a lot of times and find the best score
+        Returns:
+            the motif matrix with the best associated with the best score, the concensus motif and the best score
+        """
+        # Initialized bestScore with a big number
         allBestScore = 1000000000
         allBestMotifs = []
 
         for i in range(self.iterations):
             bestMotifs, bestScore = self.randomizedMotifSearch()
-            if bestScore  < allBestScore:
+            if bestScore < allBestScore:
                 allBestScore = bestScore
                 allBestMotifs = bestMotifs
-        consensusMotif = []
         consensusMotif = ''.join([max(item, key=item.count) for item in [*zip(*allBestMotifs)]])
         return allBestMotifs, consensusMotif, allBestScore
+
+    def scrambleSequence(self):
+        """
+        scramble the DNA sequence to create a baseline
+        Returns:
+            a list of scrambled sequences
+
+        """
+        scrambleSequences = []
+        for sequence in self.sequences:
+            # print('o is', sequence)
+            sequence = list(sequence)
+            # https://www.w3schools.com/python/ref_random_shuffle.asp
+            # shuffle is inplace
+            shuffle(sequence)
+            # print('s is', ''.join(sequence))
+            scrambleSequences.append(''.join(sequence))
+        # print(self.sequences)
+        return scrambleSequences
+
+    def iterScramble(self):
+        """
+        iterate randomized search many times with scrambled data
+        Returns:
+            the consensus motif and best score from scrambled data
+        """
+        original = self.sequences
+        # print('original', original,'\n', self.sequences)
+        self.sequences = self.scrambleSequence()
+        _, consensusMotif, allBestScore = self.iterateSearch()
+        # change the DNA sequences in the object back to original sequences
+        self.sequences = original
+        return consensusMotif, allBestScore
+
 
 class Usage(Exception):
     """
@@ -275,28 +315,33 @@ def main(myCommandLine=None):
     motifLength = myCommandLine.args.motifLength
     pseudocount = myCommandLine.args.pseudocount
 
-    shuffle = myCommandLine.args.shuffle
+    scramble = myCommandLine.args.scramble
     gibbs = myCommandLine.args.gibbs
     matrix = myCommandLine.args.matrix
 
-    # print('extracted args', iterations, motifLength, pseudocount, shuffle, gibbs, matrix)
+    # print('extracted args', iterations, motifLength, pseudocount, scramble, gibbs, matrix)
 
     fastaFile = FastAreader().readFasta()
     # store all sequence in a list
     sequences = []
     for header, sequence in fastaFile:
-        #print('header is', header)
-        #print('seq is', sequence)
+        # print('header is', header)
+        # print('seq is', sequence)
         # print(len(sequence))
         sequences.append(sequence)
     # print('DNA seqs are',sequences, 'length is', len(sequences))
 
-    searchDNA = SearchMotif(sequences, iterations, motifLength, pseudocount, shuffle, gibbs, matrix)
+    searchDNA = SearchMotif(sequences, iterations, motifLength, pseudocount, scramble, gibbs, matrix)
     allBestMotifs, consensusMotif, allBestScore = searchDNA.iterateSearch()
-    print(consensusMotif, allBestScore)
 
+    if searchDNA.scramble:
+        scrambleConsensus, scrambleScore = searchDNA.iterScramble()
+        print('Baseline Score with shuffled run is',scrambleConsensus, scrambleScore)
+        print('Non-shuffled run is', consensusMotif, allBestScore)
+    else:
+        print(consensusMotif, allBestScore)
 
 if __name__ == "__main__":
-    #start = time.time()
+    # start = time.time()
     main()
-    #print('time consumed is', time.time() - start)
+    # print('time consumed is', time.time() - start)
