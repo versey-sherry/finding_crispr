@@ -204,9 +204,13 @@ class SearchMotif():
                     seqProb = seqProb * profile[index][nucleotide]
 
                 # pick the motif with max probability and lower alpha order
-                if seqProb >= maxProb:
+                if seqProb > maxProb:
                     maxProb = seqProb
                     pickMotif = tempSeq
+                elif seqProb == maxProb:
+                    if tempSeq < pickMotif:
+                        # maxProb = seqProb
+                        pickMotif = tempSeq
 
             motifs.append(pickMotif)
         return motifs
@@ -239,7 +243,15 @@ class SearchMotif():
                 return bestMotifs, bestScore
 
     def gibbsSampler(self):
-        pass
+        motifs = self.selectRandomMotif()
+        #Initialize the best set of Motifs
+        bestMotifs = motifs
+        bestProfile = self.generateProfile(motifs)
+        bestScore = self.computeEntropy(bestProfile)
+
+        for j in range(self.iterations):
+            i = randint(0, len(self.sequences) -1)
+            print(i)
 
     def iterateSearch(self):
         """
@@ -256,6 +268,11 @@ class SearchMotif():
             if bestScore < allBestScore:
                 allBestScore = bestScore
                 allBestMotifs = bestMotifs
+            elif bestScore == allBestScore:
+                if bestMotifs < allBestMotifs:
+                    # allBestScore = bestScore
+                    allBestMotifs = bestMotifs
+
         consensusMotif = ''.join([max(item, key=item.count) for item in [*zip(*allBestMotifs)]])
         return allBestMotifs, consensusMotif, allBestScore
 
