@@ -134,4 +134,5 @@ scratch.py
 examples/
 output/
 *.out
+*.sh
 *Crisprs

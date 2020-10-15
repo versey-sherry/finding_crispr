@@ -134,13 +134,13 @@ class SearchMotif():
             A motif matrix with motifs randomly selected from the DNA sequences
 
         """
-        seed(914)
+        # seed(914)
         motifs = []
         for sequence in self.sequences:
             # https://docs.python.org/3/library/random.html
-            i = randint(0, len(sequence)-self.motifLength)
+            i = randint(0, len(sequence) - self.motifLength)
             # print(i)
-            motifs.append(sequence[i:i+self.motifLength])
+            motifs.append(sequence[i:i + self.motifLength])
         return motifs
 
     def generateProfile(self, motifs):
@@ -160,10 +160,10 @@ class SearchMotif():
         motifsTranspose = [*zip(*motifs)]
         profileDict = defaultdict(dict)
         for colNum, col in enumerate(motifsTranspose):
-            profileDict[colNum]['A'] = (col.count('A') + self.pseudocount)/colSum
-            profileDict[colNum]['C'] = (col.count('C') + self.pseudocount)/colSum
-            profileDict[colNum]['G'] = (col.count('G') + self.pseudocount)/colSum
-            profileDict[colNum]['T'] = (col.count('T') + self.pseudocount)/colSum
+            profileDict[colNum]['A'] = (col.count('A') + self.pseudocount) / colSum
+            profileDict[colNum]['C'] = (col.count('C') + self.pseudocount) / colSum
+            profileDict[colNum]['G'] = (col.count('G') + self.pseudocount) / colSum
+            profileDict[colNum]['T'] = (col.count('T') + self.pseudocount) / colSum
         return profileDict
 
     def computeEntropy(self, profile):
@@ -175,13 +175,79 @@ class SearchMotif():
         Returns:
             the entropy of the profile
 
+        """
+        entropy = -sum([sum([probability * log2(probability) for probability in colValue.values()])
+                        for colValue in profile.values()])
+        return entropy
+
+    def findNewMotifs(self, profile):
+        """
+        Given a profile, look at all motifs in each sequence and generate a new motif matrix
+        with the most probable motif given profile
+        Args:
+            profile: the condition profile
+
+        Returns:
+            a new motif matrix with the most probable motif in each DNA sequence given profile
 
         """
-        return -sum([sum([probability * log2(probability) for probability in colValue.values()])
-                    for colValue in profile.values()])
+        # print(profile)
+        motifs = []
+        for sequence in self.sequences:
+            # initialize the best motif for the sequence
+            pickMotif = "Z"
+            maxProb = 0.
+            for n in range(len(sequence) - self.motifLength + 1):
+                tempSeq = sequence[n:n + self.motifLength]
+                seqProb = 1.
+
+                # computer probabilty for the particular motif
+                for index, nucleotide in enumerate(tempSeq):
+                    # print('index, nucleotide', index, nucleotide)
+                    # print('prob', profile[index][nucleotide])
+                    seqProb = seqProb * profile[index][nucleotide]
+
+                # pick the motif with max probability and lower alpha order
+                if seqProb >= maxProb and tempSeq < pickMotif:
+                    maxProb = seqProb
+                    pickMotif = tempSeq
+
+            motifs.append(pickMotif)
+        return motifs
 
     def randomizedMotifSearch(self):
-        pass
+        motifs = self.selectRandomMotif()
+        # Initialize the best set of Motifs
+        bestMotifs = motifs
+        bestProfile = self.generateProfile(motifs)
+        bestScore = self.computeEntropy(bestProfile)
+
+        while True:
+            tempMotifs = self.findNewMotifs(bestProfile)
+            tempProfile = self.generateProfile(tempMotifs)
+            tempScore = self.computeEntropy(tempProfile)
+            # print('Best score and temp score', bestScore, tempScore)
+            # Compare the scores
+            if tempScore < bestScore:
+                bestMotifs = tempMotifs
+                bestProfile = tempProfile
+                bestScore = tempScore
+            else:
+                return bestMotifs, bestScore
+
+    def iterateSearch(self):
+        #Initialized bestScore with a big number
+        allBestScore = 1000000000
+        allBestMotifs = []
+
+        for i in range(self.iterations):
+            bestMotifs, bestScore = self.randomizedMotifSearch()
+            if bestScore  < allBestScore:
+                allBestScore = bestScore
+                allBestMotifs = bestMotifs
+        consensusMotif = []
+        consensusMotif = ''.join([max(item, key=item.count) for item in [*zip(*allBestMotifs)]])
+        return allBestMotifs, consensusMotif, allBestScore
 
 class Usage(Exception):
     """
@@ -200,7 +266,7 @@ def main(myCommandLine=None):
 
     try:
         myCommandLine = CommandLine()  # read options from the command line
-        print(myCommandLine.args)  # print the parsed argument string .. as there is nothing better to do
+        # print(myCommandLine.args)  # print the parsed argument string .. as there is nothing better to do
     except Usage as err:
         print(err.msg)
 
@@ -213,7 +279,7 @@ def main(myCommandLine=None):
     gibbs = myCommandLine.args.gibbs
     matrix = myCommandLine.args.matrix
 
-    print('extracted args', iterations, motifLength, pseudocount, shuffle, gibbs, matrix)
+    # print('extracted args', iterations, motifLength, pseudocount, shuffle, gibbs, matrix)
 
     fastaFile = FastAreader().readFasta()
     # store all sequence in a list
@@ -223,7 +289,11 @@ def main(myCommandLine=None):
         #print('seq is', sequence)
         # print(len(sequence))
         sequences.append(sequence)
-    print('DNA seqs are',sequences, 'length is', len(sequences))
+    # print('DNA seqs are',sequences, 'length is', len(sequences))
+
+    searchDNA = SearchMotif(sequences, iterations, motifLength, pseudocount, shuffle, gibbs, matrix)
+    allBestMotifs, consensusMotif, allBestScore = searchDNA.iterateSearch()
+    print(consensusMotif, allBestScore)
 
 
 if __name__ == "__main__":
