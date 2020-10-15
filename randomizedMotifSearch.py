@@ -113,7 +113,8 @@ class FastAreader():
 
 
 class SearchMotif():
-    def __init__(self, sequences, iterations, motifLength, pseudocount, scramble, gibbs, matrix):
+    def __init__(self, headers, sequences, iterations, motifLength, pseudocount, scramble, gibbs, matrix):
+        self.headers = headers
         self.sequences = sequences
         self.iterations = iterations
         self.motifLength = motifLength
@@ -237,6 +238,9 @@ class SearchMotif():
             else:
                 return bestMotifs, bestScore
 
+    def gibbsSampler(self):
+        pass
+
     def iterateSearch(self):
         """
         Iterate the search a lot of times and find the best score
@@ -288,6 +292,21 @@ class SearchMotif():
         self.sequences = original
         return consensusMotif, allBestScore
 
+    def printResults(self):
+        """
+        Pretty printing the results
+        """
+        allBestMotifs, consensusMotif, allBestScore = self.iterateSearch()
+        if self.scramble:
+            scrambleConsensus, scrambleScore = self.iterScramble()
+            print('Baseline Score with shuffled run result is', scrambleConsensus, scrambleScore)
+            print('Non-shuffled run result is                ', consensusMotif, allBestScore)
+        else:
+            print('Non-shuffled run result is', consensusMotif, allBestScore)
+
+        if self.matrix:
+            for i in range(len(self.headers)):
+                print(self.headers[i], allBestMotifs[i])
 
 class Usage(Exception):
     """
@@ -323,23 +342,17 @@ def main(myCommandLine=None):
 
     fastaFile = FastAreader().readFasta()
     # store all sequence in a list
+    headers = []
     sequences = []
     for header, sequence in fastaFile:
-        # print('header is', header)
-        # print('seq is', sequence)
-        # print(len(sequence))
+        headers.append(header.split()[0])
         sequences.append(sequence)
+        # print(headers)
+        # print(sequences)
     # print('DNA seqs are',sequences, 'length is', len(sequences))
 
-    searchDNA = SearchMotif(sequences, iterations, motifLength, pseudocount, scramble, gibbs, matrix)
-    allBestMotifs, consensusMotif, allBestScore = searchDNA.iterateSearch()
-
-    if searchDNA.scramble:
-        scrambleConsensus, scrambleScore = searchDNA.iterScramble()
-        print('Baseline Score with shuffled run is',scrambleConsensus, scrambleScore)
-        print('Non-shuffled run is', consensusMotif, allBestScore)
-    else:
-        print(consensusMotif, allBestScore)
+    searchDNA = SearchMotif(headers, sequences, iterations, motifLength, pseudocount, scramble, gibbs, matrix)
+    searchDNA.printResults()
 
 if __name__ == "__main__":
     # start = time.time()
