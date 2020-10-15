@@ -6,8 +6,11 @@ import time
 from random import seed
 from random import randint
 from random import shuffle
+from random import choices
 from collections import defaultdict
 from math import log2
+from copy import deepcopy
+
 
 """
 Homework 2: Finding CRISPR arrays
@@ -243,15 +246,51 @@ class SearchMotif():
                 return bestMotifs, bestScore
 
     def gibbsSampler(self):
+        """
+        Implmenting gibbs Sampler
+        Returns:
+            bestMotifs: The motif matrix that's associated with the best score
+            bestScore: The best entropy score associated with the bestMotifs
+
+        """
         motifs = self.selectRandomMotif()
-        #Initialize the best set of Motifs
+        # Initialize the best set of Motifs
         bestMotifs = motifs
         bestProfile = self.generateProfile(motifs)
         bestScore = self.computeEntropy(bestProfile)
+        tempMotifs = deepcopy(motifs)
 
         for j in range(self.iterations):
-            i = randint(0, len(self.sequences) -1)
-            print(i)
+            i = randint(0, len(self.sequences) - 1)
+            # delete the random picked sequence
+            del tempMotifs[i]
+            tempProfile = self.generateProfile(tempMotifs)
+            # compute probability in the deleted string
+            sampleSequences = []
+            sampleProbs = []
+
+            for n in range(len(self.sequences[i]) - self.motifLength + 1):
+                tempSeq = self.sequences[i][n:n + self.motifLength]
+                sampleSequences.append(tempSeq)
+                seqProb = 1.
+
+                for index, nucleotide in enumerate(tempSeq):
+                    seqProb = seqProb * tempProfile[index][nucleotide]
+                sampleProbs.append(seqProb)
+
+            sampleProbs = [item / sum(sampleProbs) for item in sampleProbs]
+            # https://stackoverflow.com/questions/3679694/a-weighted-version-of-random-choice
+            chosenMotif = choices(sampleSequences, sampleProbs)
+            tempMotifs.insert(i, chosenMotif[0])
+            tempProfile = self.generateProfile(tempMotifs)
+            tempScore = self.computeEntropy(tempProfile)
+
+            if tempScore < bestScore:
+                bestMotifs = tempMotifs
+                bestScore = tempScore
+
+        return bestMotifs, bestScore
+
 
     def iterateSearch(self):
         """
@@ -262,16 +301,32 @@ class SearchMotif():
         # Initialized bestScore with a big number
         allBestScore = 1000000000
         allBestMotifs = []
+        # keep_motifs = []
+        # keep_scores = []
+        # keep_cons = []
 
         for i in range(self.iterations):
-            bestMotifs, bestScore = self.randomizedMotifSearch()
+            if self.gibbs:
+                bestMotifs, bestScore = self.gibbsSampler()
+            else:
+                bestMotifs, bestScore = self.randomizedMotifSearch()
+
             if bestScore < allBestScore:
                 allBestScore = bestScore
                 allBestMotifs = bestMotifs
             elif bestScore == allBestScore:
+                # keep_scores.append(bestScore)
+                # keep_motifs.append(bestMotifs)
+                # keep_cons.append(''.join([max(item, key=item.count) for item in [*zip(*bestMotifs)]]))
                 if bestMotifs < allBestMotifs:
                     # allBestScore = bestScore
                     allBestMotifs = bestMotifs
+
+        # if len(keep_scores) > 0:
+        #     for i in range(len(keep_scores)):
+        #         print('Motif Matrix', keep_motifs[i])
+        #         print('Motif Score', keep_scores[i])
+        #         print('Consensus', keep_cons[i])
 
         consensusMotif = ''.join([max(item, key=item.count) for item in [*zip(*allBestMotifs)]])
         return allBestMotifs, consensusMotif, allBestScore
@@ -314,6 +369,12 @@ class SearchMotif():
         Pretty printing the results
         """
         allBestMotifs, consensusMotif, allBestScore = self.iterateSearch()
+
+        if self.gibbs:
+            print('Running Gibbs Sampler')
+        else:
+            print('Running Randomized Search')
+
         if self.scramble:
             scrambleConsensus, scrambleScore = self.iterScramble()
             print('Baseline Score with shuffled run result is', scrambleConsensus, scrambleScore)
