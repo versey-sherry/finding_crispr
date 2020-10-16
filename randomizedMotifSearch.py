@@ -130,6 +130,9 @@ class FastAreader():
 
 
 class SearchMotif():
+    """
+    Implement Randomized Totif Search and Gibbs Sampler for finding the concensus
+    """
     def __init__(self, headers, sequences, iterations, motifLength, pseudocount, scramble, gibbs, matrix):
         self.headers = headers
         self.sequences = sequences
