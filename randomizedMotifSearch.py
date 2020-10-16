@@ -15,11 +15,25 @@ from copy import deepcopy
 """
 Homework 2: Finding CRISPR arrays
 
+Using randomized Motif Search or Gibbs Sampler to find the consensus in multiple DNA sequences
+
 Input/Output: STDIN / STDOUT
 
 
 Examples:
+Randomized Motif Search
+python randomizedMotifSearch.py -i 1000 -p 1 -k 13 < input.fa > output.out
+Randomized Motif Search with scrambled sequence as baseline
+python randomizedMotifSearch.py -i 1000 -p 1 -k 13 -r < input.fa > output.out
+Randomized Motif Search with scrambled sequence as baseline with Motif Matrix
+python randomizedMotifSearch.py -i 1000 -p 1 -k 13 -r -m < input.fa > output.out
 
+Gibbs Sampler Search
+python randomizedMotifSearch.py -i 100 -p 1 -k 13 -g < input.fa > output.out
+Gibbs Sampler Search with scrambled sequence as baseline
+python randomizedMotifSearch.py -i 100 -p 1 -k 13 -g -r < input.fa > output.out
+Gibbs Sampler Search with scrambled sequence as baseline with Motif Matrix
+python randomizedMotifSearch.py -i 100 -p 1 -k 13 -g  -r -m < input.fa > output.out
 
 """
 
@@ -210,10 +224,6 @@ class SearchMotif():
                 if seqProb > maxProb:
                     maxProb = seqProb
                     pickMotif = tempSeq
-                elif seqProb == maxProb:
-                    if tempSeq < pickMotif:
-                        # maxProb = seqProb
-                        pickMotif = tempSeq
 
             motifs.append(pickMotif)
         return motifs
@@ -315,12 +325,10 @@ class SearchMotif():
                 allBestScore = bestScore
                 allBestMotifs = bestMotifs
             elif bestScore == allBestScore:
+                pass
                 # keep_scores.append(bestScore)
                 # keep_motifs.append(bestMotifs)
                 # keep_cons.append(''.join([max(item, key=item.count) for item in [*zip(*bestMotifs)]]))
-                if bestMotifs < allBestMotifs:
-                    # allBestScore = bestScore
-                    allBestMotifs = bestMotifs
 
         # if len(keep_scores) > 0:
         #     for i in range(len(keep_scores)):
