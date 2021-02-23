@@ -1,4 +1,5 @@
-# Ranking motifs based on how statistically underrepresented they are
+# Find consensus sequences among multiple records
 
-Probility of K-mers modeled with Markovian(2)
+Class project for BME205.
 
+Using Randomized search to find consensus sequences that have the lowest entropy score. Search using Gibbs Sampler is also supported.
